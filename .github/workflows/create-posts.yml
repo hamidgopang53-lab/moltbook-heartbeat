@@ -1,12 +1,12 @@
-name: Create Moltbook Posts
+name: Comment on Moltbook Posts
 
 on:
   schedule:
-    - cron: '0 */2 * * *'
+    - cron: '*/30 * * * *'
   workflow_dispatch:
 
 jobs:
-  create-post:
+  add-comment:
     runs-on: ubuntu-latest
     
     steps:
@@ -21,7 +21,7 @@ jobs:
       - name: Install dependencies
         run: pip install requests
       
-      - name: Create post
+      - name: Add comment
         env:
           MOLTBOOK_API_KEY: ${{ secrets.MOLTBOOK_API_KEY }}
-        run: python create_post.py
+        run: python comment_posts.py
