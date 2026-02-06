@@ -2,8 +2,8 @@ name: Create Moltbook Posts
 
 on:
   schedule:
-    - cron: '0 */2 * * *'  # ہر 2 گھنٹے میں چلے گا
-  workflow_dispatch:       # دستی طور پر (Manually) چلانے کے لیے
+    - cron: '0 */2 * * *'
+  workflow_dispatch:
 
 jobs:
   create-post:
@@ -24,5 +24,5 @@ jobs:
       - name: Create Post Script Run
         env:
           MOLTBOOK_API_KEY: ${{ secrets.MOLTBOOK_API_KEY }}
-        run: python scripts/create_post.py
+        run: python create_post.py
         
