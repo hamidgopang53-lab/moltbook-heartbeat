@@ -21,8 +21,7 @@ jobs:
       - name: Install dependencies
         run: pip install requests
       
-      - name: Run Comment Script
+      - name: Add comment
         env:
           MOLTBOOK_API_KEY: ${{ secrets.MOLTBOOK_API_KEY }}
         run: python comment_posts.py
-        
