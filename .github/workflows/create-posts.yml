@@ -2,12 +2,13 @@ name: Create Moltbook Posts
 
 on:
   schedule:
-    - cron: '0 */2 * * *'
-  workflow_dispatch:
+    - cron: '0 */2 * * *'  # ہر 2 گھنٹے میں چلے گا
+  workflow_dispatch:       # دستی طور پر (Manually) چلانے کے لیے
 
 jobs:
   create-post:
     runs-on: ubuntu-latest
+    
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
@@ -20,7 +21,8 @@ jobs:
       - name: Install dependencies
         run: pip install requests
       
-      - name: Create post
+      - name: Create Post Script Run
         env:
           MOLTBOOK_API_KEY: ${{ secrets.MOLTBOOK_API_KEY }}
         run: python scripts/create_post.py
+        
