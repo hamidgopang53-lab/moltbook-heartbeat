@@ -1,4 +1,4 @@
-name: Comment on Posts
+name: Comment on Moltbook Posts
 
 on:
   schedule:
@@ -9,11 +9,18 @@ jobs:
   add-comment:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-python@v4
+      - name: Checkout repository
+        uses: actions/checkout@v3
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4
         with:
           python-version: '3.10'
-      - run: pip install requests
-      - env:
+      
+      - name: Install dependencies
+        run: pip install requests
+      
+      - name: Add comment
+        env:
           MOLTBOOK_API_KEY: ${{ secrets.MOLTBOOK_API_KEY }}
         run: python scripts/comment_posts.py
