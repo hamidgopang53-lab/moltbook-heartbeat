@@ -21,8 +21,7 @@ jobs:
       - name: Install dependencies
         run: pip install requests
       
-      - name: Create Post Script Run
+      - name: Create post
         env:
           MOLTBOOK_API_KEY: ${{ secrets.MOLTBOOK_API_KEY }}
         run: python create_post.py
-        
