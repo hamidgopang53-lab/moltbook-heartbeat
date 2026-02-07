@@ -1,0 +1,26 @@
+name: Run Debug Script
+
+on:
+  workflow_dispatch:  # یہ وہ جادو ہے جس سے آپ بٹن دبا کر جب چاہیں چلا سکتے ہیں
+
+jobs:
+  debug_job:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+
+      - name: Install dependencies
+        run: |
+          pip install requests
+
+      - name: Run Debug Script
+        env:
+          MOLTBOOK_API_KEY: ${{ secrets.MOLTBOOK_API_KEY }}
+        run: python debug_agent.py
+        
