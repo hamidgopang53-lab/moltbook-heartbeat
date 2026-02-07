@@ -1,192 +1,186 @@
 import os
 import requests
 import random
-from datetime import datetime, timedelta
+from datetime import datetime
 
 MOLTBOOK_API = "https://www.moltbook.com/api/v1"
 API_KEY = os.getenv("MOLTBOOK_API_KEY")
+USERNAME = "AlMuhaqqiqAlTahawi"
 
-# جوابات کے نمونے - یہ مختلف قسم کے جوابات ہیں جو تبصروں پر دیے جائیں گے
 REPLIES = [
     "جزاك الله خيراً على هذه الملاحظة القيمة. بارك الله فيك.",
     "أحسنت، نقطة مهمة. شكراً على المشاركة.",
     "فائدة طيبة، نفع الله بك.",
     "ما شاء الله، إضافة جيدة للنقاش.",
-    "بارك الله فيك على هذا التوضيح."
+    "بارك الله فيك على هذا التوضيح.",
+    "نعم، هذا صحيح. والله أعلم.",
+    "موضوع جيد للنقاش. وفقك الله."
 ]
 
-def get_my_recent_posts():
-    """اپنی حالیہ پوسٹس کی فہرست حاصل کریں"""
-    print("🔍 اپنی پوسٹس تلاش کر رہے ہیں...")
+def get_user_posts():
+    """صارف کی پوسٹس براہ راست پروفائل سے حاصل کریں"""
+    print(f"🔍 @{USERNAME} کی پوسٹس لا رہے ہیں...")
     
     try:
-        # یہاں ہم فیڈ سے اپنی پوسٹس تلاش کریں گے
+        url = f"{MOLTBOOK_API}/users/{USERNAME}/posts"
+        print(f"   📡 URL: {url}")
+        
         response = requests.get(
-            f"{MOLTBOOK_API}/feed?sort=new&limit=20",
+            url,
             headers={"Authorization": f"Bearer {API_KEY}"},
             timeout=30
         )
         
+        print(f"   📥 HTTP Status: {response.status_code}")
+        
         if response.status_code == 200:
-            all_posts = response.json().get('data', [])
-            # صرف اپنی پوسٹس فلٹر کریں
-            my_posts = [p for p in all_posts if p.get('author', {}).get('username') == 'AlMuhaqqiqAlTahawi']
-            print(f"✅ {len(my_posts)} اپنی پوسٹس ملیں (کل {len(all_posts)} میں سے)")
-            return my_posts
+            data = response.json()
+            posts = data.get('data', [])
+            print(f"   ✅ {len(posts)} پوسٹس ملیں")
+            return posts
         else:
-            print(f"❌ پوسٹس نہیں ملیں: HTTP {response.status_code}")
-            print(f"   جواب: {response.text[:200]}")
+            print(f"   ❌ خرابی: {response.status_code}")
+            print(f"   پیغام: {response.text[:300]}")
             return []
+            
     except Exception as e:
-        print(f"❌ خطا پوسٹس لاتے وقت: {str(e)}")
+        print(f"   ❌ Exception: {str(e)}")
         return []
 
-def get_post_details(post_id):
-    """کسی مخصوص پوسٹ کی تفصیلات حاصل کریں"""
+def get_post_comments(post_id):
+    """کسی پوسٹ کے تبصرے حاصل کریں"""
     try:
+        url = f"{MOLTBOOK_API}/posts/{post_id}/comments"
+        
         response = requests.get(
-            f"{MOLTBOOK_API}/posts/{post_id}",
+            url,
             headers={"Authorization": f"Bearer {API_KEY}"},
             timeout=30
         )
         
         if response.status_code == 200:
-            return response.json()
+            data = response.json()
+            comments = data.get('data', [])
+            return comments
         else:
-            print(f"   ⚠️  پوسٹ کی تفصیلات نہیں ملیں: {post_id}")
-            return None
+            print(f"      ⚠️ تبصرے نہیں ملے: {response.status_code}")
+            return []
+            
     except Exception as e:
-        print(f"   ❌ خطا: {str(e)}")
-        return None
+        print(f"      ❌ Exception: {str(e)}")
+        return []
 
-def reply_to_comment(post_id, parent_comment_id, reply_text):
-    """تبصرے کا جواب دیں"""
+def post_comment(post_id, content, parent_id=None):
+    """پوسٹ پر تبصرہ یا جواب بھیجیں"""
     try:
-        print(f"   📝 جواب بھیج رہے ہیں...")
+        url = f"{MOLTBOOK_API}/posts/{post_id}/comments"
+        
+        payload = {"content": content}
+        if parent_id:
+            payload["parent_id"] = parent_id
+        
+        print(f"      📤 تبصرہ بھیج رہے ہیں...")
+        print(f"      متن: {content[:50]}...")
         
         response = requests.post(
-            f"{MOLTBOOK_API}/posts/{post_id}/comments",
+            url,
             headers={
                 "Authorization": f"Bearer {API_KEY}",
                 "Content-Type": "application/json"
             },
-            json={
-                "content": reply_text,
-                "parent_id": parent_comment_id
-            },
+            json=payload,
             timeout=30
         )
         
-        if response.status_code == 200 or response.status_code == 201:
-            print(f"   ✅ جواب کامیابی سے بھیج دیا گیا!")
+        print(f"      📥 Response: {response.status_code}")
+        
+        if response.status_code in [200, 201]:
+            print(f"      ✅ کامیابی!")
             return True
         else:
-            print(f"   ❌ جواب ناکام: HTTP {response.status_code}")
-            print(f"   جواب: {response.text[:200]}")
+            print(f"      ❌ ناکام: {response.text[:200]}")
             return False
+            
     except Exception as e:
-        print(f"   ❌ خطا جواب بھیجتے وقت: {str(e)}")
+        print(f"      ❌ Exception: {str(e)}")
         return False
 
 def main():
-    """مرکزی فنکشن - یہ سب کچھ کنٹرول کرتا ہے"""
-    print(f"\n{'='*60}")
-    print(f"💬 تبصروں پر جوابات کا نظام شروع ہو رہا ہے")
-    print(f"⏰ وقت: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-    print(f"{'='*60}\n")
+    print(f"\n{'='*70}")
+    print(f"💬 تبصروں پر جوابات کا نظام")
+    print(f"⏰ {datetime.now().strftime('%d-%m-%Y %H:%M:%S')}")
+    print(f"{'='*70}\n")
     
-    # اگر API Key نہیں ہے تو فوراً رک جائیں
     if not API_KEY:
-        print("❌ CRITICAL: MOLTBOOK_API_KEY نہیں ملی!")
-        print("   براہ کرم GitHub Secrets میں چیک کریں")
+        print("❌ CRITICAL: API Key نہیں ملی!")
         return
     
-    print(f"✅ API Key موجود ہے (پہلے 10 حروف: {API_KEY[:10]}...)")
+    print(f"✅ API Key موجود: {API_KEY[:15]}...")
     
-    # اپنی پوسٹس حاصل کریں
-    my_posts = get_my_recent_posts()
+    posts = get_user_posts()
     
-    if not my_posts:
-        print("\n⚠️  کوئی پوسٹ نہیں ملی۔ ختم ہو رہا ہے۔")
+    if not posts:
+        print("\n⚠️ کوئی پوسٹ نہیں ملی")
         return
     
-    # ہر پوسٹ کو چیک کریں
-    total_comments_checked = 0
-    total_replies_sent = 0
+    print(f"\n📚 کل {len(posts)} پوسٹس ملیں")
     
-    for post in my_posts:
+    replied_count = 0
+    
+    for idx, post in enumerate(posts[:5], 1):
         post_id = post.get('id')
-        post_title = post.get('title', 'بے نام')
+        title = post.get('title', 'بے نام')[:40]
         
-        print(f"\n{'─'*60}")
-        print(f"📄 پوسٹ: {post_title}")
+        print(f"\n{'─'*70}")
+        print(f"📄 پوسٹ {idx}: {title}")
         print(f"   ID: {post_id}")
         
-        # پوسٹ کی مکمل تفصیلات حاصل کریں
-        post_details = get_post_details(post_id)
-        
-        if not post_details:
-            print(f"   ⚠️  تفصیلات نہیں ملیں، اگلی پوسٹ پر جا رہے ہیں")
-            continue
-        
-        # تبصرے گنیں
-        comments = post_details.get('comments', [])
-        print(f"   💬 کل تبصرے: {len(comments)}")
-        total_comments_checked += len(comments)
+        comments = get_post_comments(post_id)
+        print(f"   💬 {len(comments)} تبصرے")
         
         if not comments:
-            print(f"   ℹ️  کوئی تبصرہ نہیں ملا")
+            print(f"   ℹ️ کوئی تبصرہ نہیں")
             continue
         
-        # ہر تبصرے کو دیکھیں
         for comment in comments:
+            author = comment.get('author', {}).get('username', 'نامعلوم')
             comment_id = comment.get('id')
-            comment_author = comment.get('author', {}).get('username', 'نامعلوم')
-            comment_text = comment.get('content', '')[:50]  # پہلے 50 حروف
+            text = comment.get('content', '')[:60]
             
-            print(f"\n   💭 تبصرہ از: {comment_author}")
-            print(f"      متن: {comment_text}...")
+            print(f"\n      👤 {author}: {text}...")
             
-            # اگر یہ ہمارا اپنا تبصرہ ہے تو چھوڑ دیں
-            if comment_author == 'AlMuhaqqiqAlTahawi':
-                print(f"      ⏭️  یہ ہمارا اپنا تبصرہ ہے، چھوڑ رہے ہیں")
+            if author == USERNAME:
+                print(f"         ⏭️ ہمارا اپنا تبصرہ")
                 continue
             
-            # دیکھیں کہ کیا ہم نے پہلے جواب دیا ہے
+            has_our_reply = False
             replies = comment.get('replies', [])
-            has_our_reply = any(
-                r.get('author', {}).get('username') == 'AlMuhaqqiqAlTahawi'
-                for r in replies
-            )
+            
+            for reply in replies:
+                reply_author = reply.get('author', {}).get('username')
+                if reply_author == USERNAME:
+                    has_our_reply = True
+                    break
             
             if has_our_reply:
-                print(f"      ✓ ہم نے پہلے ہی جواب دے دیا ہے")
+                print(f"         ✓ پہلے جواب دے چکے")
                 continue
             
-            # جواب بھیجیں
             reply_text = random.choice(REPLIES)
-            print(f"      📤 جواب بھیج رہے ہیں: {reply_text[:40]}...")
-            
-            success = reply_to_comment(post_id, comment_id, reply_text)
+            success = post_comment(post_id, reply_text, comment_id)
             
             if success:
-                total_replies_sent += 1
-                print(f"      🎉 کامیابی!")
-                # صرف ایک جواب بھیج کر رک جائیں (تاکہ سپیم نہ لگے)
-                print(f"\n⏸️  اس دفعہ ایک جواب بھیج دیا، اب رک رہے ہیں")
-                print(f"   (اگلی بار مزید تبصروں کا جواب دیں گے)")
+                replied_count += 1
+                print(f"\n   🎉 جواب کامیاب!")
+                print(f"   ⏸️ ایک جواب بھیج دیا، اب رک رہے ہیں")
                 break
         
-        # اگر ایک جواب بھیج چکے ہیں تو باہر نکل جائیں
-        if total_replies_sent > 0:
+        if replied_count > 0:
             break
     
-    # خلاصہ
-    print(f"\n{'='*60}")
-    print(f"📊 خلاصہ:")
-    print(f"   ✓ کل تبصرے چیک کیے: {total_comments_checked}")
-    print(f"   ✓ کل جوابات بھیجے: {total_replies_sent}")
-    print(f"{'='*60}\n")
+    print(f"\n{'='*70}")
+    print(f"📊 نتیجہ: {replied_count} جواب بھیجے")
+    print(f"{'='*70}\n")
 
 if __name__ == "__main__":
     main()
