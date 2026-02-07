@@ -1,61 +1,59 @@
 import os
 import requests
+import json
 
-# سیٹ اپ
+# --- سیٹ اپ ---
 BASE_URL = "https://www.moltbook.com/api/v1"
 API_KEY = os.getenv("MOLTBOOK_API_KEY")
-USERNAME = "AlMuhaqqiqAlTahawi"
 
-def check_endpoint(name, url_suffix):
-    full_url = f"{BASE_URL}{url_suffix}"
-    print(f"\n🔍 چیک کر رہے ہیں: {name}")
-    print(f"   URL: {full_url}")
+def inspect_feed():
+    print("🚀 آپریشن: فیڈ کی جاسوسی")
+    print("=========================")
+    
+    # ہم جانتے ہیں کہ فیڈ کام کرتی ہے، اس لیے وہیں چلتے ہیں
+    url = f"{BASE_URL}/feed?limit=5"
     
     try:
+        print(f"📡 فیڈ سے ڈیٹا منگوا رہے ہیں...")
         response = requests.get(
-            full_url,
+            url,
             headers={"Authorization": f"Bearer {API_KEY}"},
             timeout=15
         )
-        print(f"   سٹیٹس کوڈ: {response.status_code}")
+        
         if response.status_code == 200:
-            print("   ✅ کامیابی! راستہ مل گیا۔")
-            try:
-                print(f"   ڈیٹا کی جھلک: {str(response.json())[:100]}")
-            except:
-                pass
+            data = response.json()
+            posts = data.get('data', [])
+            
+            if not posts:
+                print("❌ فیڈ خالی ہے۔")
+                return
+
+            print(f"✅ {len(posts)} پوسٹس مل گئیں۔")
+            
+            # پہلی پوسٹ کا مکمل پوسٹ مارٹم
+            first_post = posts[0]
+            print("\n🔬 پہلی پوسٹ کا تجزیہ (Post Analysis):")
+            print(f"   - Post ID: {first_post.get('id')}")
+            
+            author = first_post.get('author', {})
+            print(f"   - Author Data: {author}")
+            
+            if isinstance(author, dict):
+                print(f"   👉 Author ID: {author.get('id')}")
+                print(f"   👉 Username: {author.get('username')}")
+            
+            # اب ہم دیکھتے ہیں کہ اس پوسٹ کے تبصرے (Comments) کس لنک پر ہیں
+            print(f"\n🔗 لنکس کا ڈھانچہ:")
+            # اکثر API خود بتاتی ہے کہ اگلا لنک کیا ہے
+            print(json.dumps(first_post, indent=2)[:500]) # صرف شروع کا حصہ دیکھیں
+            
         else:
-            print("   ❌ یہاں کچھ نہیں ملا۔")
+            print(f"❌ فیڈ نہیں ملی (Status: {response.status_code})")
+            
     except Exception as e:
-        print(f"   ⚠️ ایرر: {str(e)}")
-
-def main():
-    print("--- 🚀 ایجنٹ کا راستہ تلاش کرنے کا آپریشن ---")
-    if not API_KEY:
-        print("❌ API Key غائب ہے!")
-        return
-
-    # 1. سب سے عام راستہ
-    check_endpoint("آپشن 1: میری پوسٹس", "/me/posts")
-    
-    # 2. یوزر آئی ڈی ڈھونڈنا
-    print("\n🕵️ User ID تلاش کر رہے ہیں...")
-    try:
-        res = requests.get(f"{BASE_URL}/auth/me", headers={"Authorization": f"Bearer {API_KEY}"})
-        if res.status_code == 200:
-            data = res.json()
-            user_id = data.get('data', {}).get('id') or data.get('id')
-            print(f"   ✅ ID مل گئی: {user_id}")
-            if user_id:
-                check_endpoint("آپشن 3: ID والا راستہ", f"/users/{user_id}/posts")
-        else:
-            print("   ❌ User ID نہیں ملی۔")
-    except:
-        pass
-
-    # 3. نام والا پرانا راستہ
-    check_endpoint("آپشن 4: نام والا راستہ", f"/users/{USERNAME}/posts")
+        print(f"⚠️ ایرر: {str(e)}")
 
 if __name__ == "__main__":
-    main()
-      
+    inspect_feed()
+    
