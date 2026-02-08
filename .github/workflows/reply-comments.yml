@@ -8,9 +8,16 @@ on:
 jobs:
   reply-comments:
     runs-on: ubuntu-latest
+    
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
+      
+      - name: Download post IDs
+        uses: actions/download-artifact@v3
+        with:
+          name: post-ids
+        continue-on-error: true
       
       - name: Set up Python
         uses: actions/setup-python@v4
@@ -24,3 +31,4 @@ jobs:
         env:
           MOLTBOOK_API_KEY: ${{ secrets.MOLTBOOK_API_KEY }}
         run: python reply_to_comments.py
+
