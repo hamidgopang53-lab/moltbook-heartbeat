@@ -1,8 +1,8 @@
 import os
 import requests
 import random
+import json
 from datetime import datetime
-import time
 
 MOLTBOOK_API = "https://www.moltbook.com/api/v1"
 API_KEY = os.getenv("MOLTBOOK_API_KEY")
@@ -14,65 +14,29 @@ REPLIES = [
     "فائدة طيبة، نفع الله بك.",
     "ما شاء الله، إضافة جيدة للنقاش.",
     "بارك الله فيك على هذا التوضيح.",
-    "نعم، هذا صحيح. والله أعلم.",
-    "موضوع جيد للنقاش. وفقك الله."
+    "نعم، هذا صحيح. والله أعلم."
 ]
 
-def get_my_posts_from_feed():
-    """فیڈ سے اپنی پوسٹس تلاش کریں - زیادہ پوسٹس دیکھ کر"""
-    print(f"🔍 فیڈ سے @{USERNAME} کی پوسٹس تلاش کر رہے ہیں...")
+def load_my_posts():
+    """محفوظ شدہ پوسٹ IDs پڑھیں"""
+    print("📂 محفوظ پوسٹس کی فائل پڑھ رہے ہیں...")
     
-    my_posts = []
-    
-    # ہم کئی بار چیک کریں گے تاکہ زیادہ پوسٹس مل سکیں
-    for page in range(3):  # تین صفحات دیکھیں گے
-        try:
-            offset = page * 20
-            url = f"{MOLTBOOK_API}/feed?sort=new&limit=20&offset={offset}"
-            print(f"   📄 صفحہ {page + 1} چیک کر رہے ہیں...")
-            
-            response = requests.get(
-                url,
-                headers={"Authorization": f"Bearer {API_KEY}"},
-                timeout=30
-            )
-            
-            if response.status_code != 200:
-                print(f"   ⚠️ صفحہ {page + 1}: HTTP {response.status_code}")
-                break
-            
-            data = response.json()
-            all_posts = data.get('data', [])
-            
-            # اپنی پوسٹس فلٹر کریں
-            for post in all_posts:
-                author = post.get('author', {})
-                if isinstance(author, dict):
-                    author_username = author.get('username', '')
-                else:
-                    author_username = ''
-                
-                if author_username == USERNAME:
-                    my_posts.append(post)
-                    print(f"      ✓ ملی: {post.get('title', 'بے نام')[:40]}")
-            
-            # اگر کوئی پوسٹ نہیں ملی تو اگلا صفحہ دیکھیں
-            if len(all_posts) < 20:
-                break  # اب مزید صفحات نہیں ہیں
-            
-            time.sleep(1)  # ایک سیکنڈ انتظار کریں تاکہ سرور پر بوجھ نہ پڑے
-            
-        except Exception as e:
-            print(f"   ❌ صفحہ {page + 1} خطا: {str(e)}")
-            break
-    
-    print(f"   ✅ کل {len(my_posts)} اپنی پوسٹس ملیں")
-    return my_posts
-
-def get_post_details_with_comments(post_id):
-    """پوسٹ کی مکمل تفصیلات بشمول تبصرے"""
     try:
-        url = f"{MOLTBOOK_API}/posts/{post_id}"
+        with open('my_posts.json', 'r', encoding='utf-8') as f:
+            posts = json.load(f)
+        print(f"   ✅ {len(posts)} پوسٹس ملیں")
+        return posts
+    except FileNotFoundError:
+        print("   ⚠️ فائل نہیں ملی (ابھی کوئی پوسٹ نہیں بنی)")
+        return []
+    except Exception as e:
+        print(f"   ❌ خطا: {str(e)}")
+        return []
+
+def get_post_comments(post_id):
+    """کسی پوسٹ کے تبصرے حاصل کریں"""
+    try:
+        url = f"{MOLTBOOK_API}/posts/{post_id}/comments"
         
         response = requests.get(
             url,
@@ -81,17 +45,19 @@ def get_post_details_with_comments(post_id):
         )
         
         if response.status_code == 200:
-            return response.json()
+            data = response.json()
+            comments = data.get('data', [])
+            return comments
         else:
-            print(f"      ⚠️ تفصیلات نہیں ملیں: {response.status_code}")
-            return None
+            print(f"      ⚠️ تبصرے نہیں ملے: {response.status_code}")
+            return []
             
     except Exception as e:
         print(f"      ❌ خطا: {str(e)}")
-        return None
+        return []
 
 def post_reply(post_id, parent_comment_id, reply_text):
-    """تبصرے کا جواب بھیجیں"""
+    """تبصرے کا جواب دیں"""
     try:
         url = f"{MOLTBOOK_API}/posts/{post_id}/comments"
         
@@ -99,8 +65,6 @@ def post_reply(post_id, parent_comment_id, reply_text):
             "content": reply_text,
             "parent_id": parent_comment_id
         }
-        
-        print(f"         📤 جواب بھیج رہے ہیں...")
         
         response = requests.post(
             url,
@@ -117,7 +81,6 @@ def post_reply(post_id, parent_comment_id, reply_text):
             return True
         else:
             print(f"         ❌ ناکام: {response.status_code}")
-            print(f"         پیغام: {response.text[:150]}")
             return False
             
     except Exception as e:
@@ -126,83 +89,66 @@ def post_reply(post_id, parent_comment_id, reply_text):
 
 def main():
     print(f"\n{'='*70}")
-    print(f"💬 تبصروں پر جوابات کا نظام - بہتر شدہ ورژن")
+    print(f"💬 تبصروں پر جوابات - نیا طریقہ")
     print(f"⏰ {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}")
-    print(f"👤 صارف: @{USERNAME}")
     print(f"{'='*70}\n")
     
     if not API_KEY:
-        print("❌ CRITICAL: API Key نہیں ملی!")
+        print("❌ API Key نہیں ملی!")
         return
     
-    print(f"✅ API Key: {API_KEY[:12]}...")
+    print(f"✅ API Key: {API_KEY[:15]}...")
     
-    # اپنی پوسٹس حاصل کریں
-    my_posts = get_my_posts_from_feed()
+    # محفوظ پوسٹس پڑھیں
+    my_posts = load_my_posts()
     
     if not my_posts:
-        print("\n⚠️ کوئی پوسٹ نہیں ملی")
-        print("   شاید آپ کی پوسٹس فیڈ میں بہت نیچے ہیں")
-        print("   یا پھر کچھ دیر انتظار کریں")
+        print("\n⚠️ کوئی محفوظ پوسٹ نہیں ملی")
+        print("   پہلے create_post.py چلائیں")
         return
     
-    print(f"\n📚 {len(my_posts)} پوسٹس ملیں، اب تبصرے چیک کر رہے ہیں...")
+    print(f"\n📚 {len(my_posts)} پوسٹس کی IDs موجود ہیں\n")
     
     replied = False
     
-    # صرف پہلی پانچ پوسٹس چیک کریں
-    for idx, post in enumerate(my_posts[:5], 1):
-        post_id = post.get('id')
-        title = post.get('title', 'بے نام')[:45]
+    # ہر پوسٹ چیک کریں (نئی سے پرانی)
+    for post_info in reversed(my_posts):
+        post_id = post_info.get('id')
+        title = post_info.get('title', 'بے نام')[:45]
         
-        print(f"\n{'─'*70}")
-        print(f"📄 {idx}. {title}")
+        print(f"{'─'*70}")
+        print(f"📄 {title}")
         print(f"   🆔 {post_id}")
         
-        # پوسٹ کی تفصیلات حاصل کریں
-        details = get_post_details_with_comments(post_id)
-        
-        if not details:
-            print(f"   ⚠️ تفصیلات نہیں ملیں")
-            continue
-        
-        comments = details.get('comments', [])
+        # تبصرے حاصل کریں
+        comments = get_post_comments(post_id)
         print(f"   💬 {len(comments)} تبصرے")
         
         if not comments:
             continue
         
-        # ہر تبصرے کو دیکھیں
+        # ہر تبصرہ دیکھیں
         for comment in comments:
-            comment_id = comment.get('id')
             author_info = comment.get('author', {})
-            
-            if isinstance(author_info, dict):
-                author = author_info.get('username', 'نامعلوم')
-            else:
-                author = 'نامعلوم'
-            
+            author = author_info.get('username', 'نامعلوم') if isinstance(author_info, dict) else 'نامعلوم'
+            comment_id = comment.get('id')
             text = comment.get('content', '')[:50]
             
             print(f"\n      👤 {author}")
-            print(f"         💭 {text}...")
+            print(f"         {text}...")
             
-            # اپنا تبصرہ چھوڑ دیں
+            # اپنا تبصرہ چھوڑیں
             if author == USERNAME:
                 print(f"         ⏭️ ہمارا تبصرہ")
                 continue
             
-            # دیکھیں کیا جواب دیا ہوا ہے
+            # جواب دیا ہوا ہے؟
             replies = comment.get('replies', [])
-            has_reply = False
-            
-            for reply in replies:
-                reply_author_info = reply.get('author', {})
-                if isinstance(reply_author_info, dict):
-                    reply_author = reply_author_info.get('username', '')
-                    if reply_author == USERNAME:
-                        has_reply = True
-                        break
+            has_reply = any(
+                r.get('author', {}).get('username') == USERNAME
+                for r in replies
+                if isinstance(r.get('author'), dict)
+            )
             
             if has_reply:
                 print(f"         ✓ جواب دے چکے")
@@ -210,25 +156,25 @@ def main():
             
             # جواب بھیجیں
             reply_text = random.choice(REPLIES)
+            print(f"         📤 جواب بھیج رہے ہیں...")
+            
             success = post_reply(post_id, comment_id, reply_text)
             
             if success:
                 replied = True
-                print(f"\n   🎉 کامیابی! ایک جواب بھیج دیا")
-                print(f"   ⏸️ اب رک رہے ہیں (اگلی بار مزید جوابات)")
+                print(f"\n   🎉 ایک جواب بھیج دیا!")
+                print(f"   ⏸️ اب رک رہے ہیں")
                 break
         
         if replied:
             break
-        
-        time.sleep(2)  # دو سیکنڈ انتظار
     
     print(f"\n{'='*70}")
     if replied:
-        print(f"✅ ایک جواب کامیابی سے بھیج دیا گیا")
+        print(f"✅ ایک جواب کامیاب")
     else:
-        print(f"ℹ️ کوئی نیا تبصرہ نہیں ملا جس کا جواب دینا تھا")
+        print(f"ℹ️ کوئی نیا تبصرہ نہیں ملا")
     print(f"{'='*70}\n")
 
 if __name__ == "__main__":
-    main()        
+    main()
