@@ -27,7 +27,7 @@ jobs:
         run: python create_post.py
       
       - name: Upload post IDs
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: post-ids
           path: my_posts.json
